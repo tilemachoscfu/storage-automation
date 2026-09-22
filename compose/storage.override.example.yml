@@ -1,0 +1,75 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      VPN_SERVICE_PROVIDER: ${VPN_SERVICE_PROVIDER}
+      VPN_TYPE: ${VPN_TYPE}
+      WIREGUARD_PRIVATE_KEY: ${WIREGUARD_PRIVATE_KEY}
+      WIREGUARD_ADDRESSES: ${WIREGUARD_ADDRESSES}
+      SERVER_COUNTRIES: ${SERVER_COUNTRIES}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  qbittorrent:
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      STORAGE_PATH: /storage
+      VOLUME_ID: ${VOLUME_ID}
+    entrypoint: ["/bin/sh", "/storage-mount-guard.sh", "/init"]
+    volumes:
+      - type: bind
+        source: ${HOST_STORAGE_PATH}
+        target: /storage
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./scripts/storage-mount-guard.sh
+        target: /storage-mount-guard.sh
+        read_only: true
+        bind:
+          create_host_path: false
+
+  sonarr:
+    environment:
+      STORAGE_PATH: /storage
+      VOLUME_ID: ${VOLUME_ID}
+    volumes:
+      - type: bind
+        source: ${HOST_STORAGE_PATH}
+        target: /storage
+        bind:
+          create_host_path: false
+
+  radarr:
+    environment:
+      STORAGE_PATH: /storage
+      VOLUME_ID: ${VOLUME_ID}
+    volumes:
+      - type: bind
+        source: ${HOST_STORAGE_PATH}
+        target: /storage
+        bind:
+          create_host_path: false
+
+  jellyfin:
+    volumes:
+      - type: bind
+        source: ${HOST_STORAGE_PATH}/media
+        target: /storage/media
+        read_only: true
+        bind:
+          create_host_path: false
+
