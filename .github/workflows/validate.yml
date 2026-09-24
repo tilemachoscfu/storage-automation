@@ -1,0 +1,38 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Python syntax
+        run: python3 -m compileall -q scripts
+
+      - name: Check shell syntax
+        run: sh -n scripts/storage-mount-guard.sh
+
+      - name: Exercise safe storage dry-run
+        run: |
+          temporary_root="$(mktemp -d)"
+          trap 'rm -rf -- "$temporary_root"' EXIT
+          sed \
+            -e "s#HOST_STORAGE_PATH=CHANGE_ME#HOST_STORAGE_PATH=$temporary_root/storage#" \
+            -e 's#VOLUME_ID=CHANGE_ME#VOLUME_ID=ci-volume#' \
+            config/storage.env.example > "$temporary_root/storage.env"
+          python3 scripts/prepare_storage.py --config "$temporary_root/storage.env"
+          test ! -e "$temporary_root/storage"
+
+      - name: Exercise Docker report parser
+        run: |
+          printf '%s\n' '[{"Name":"/media","HostConfig":{"NetworkMode":"bridge","ReadonlyRootfs":true,"RestartPolicy":{"Name":"unless-stopped"}},"Mounts":[]}]' |
+            python3 scripts/docker_storage_report.py |
+            grep -F '| media | bridge | - | True | unless-stopped |'
