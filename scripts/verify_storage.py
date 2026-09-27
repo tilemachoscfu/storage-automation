@@ -40,15 +40,16 @@ def main() -> None:
 
     hardlinks = False
     if writable:
-        with tempfile.TemporaryDirectory(dir=downloads) as temporary:
-            source = Path(temporary) / "source"
-            target = library / f".hardlink-check-{os.getpid()}"
-            try:
+        try:
+            with tempfile.TemporaryDirectory(dir=downloads) as temporary, \
+                    tempfile.TemporaryDirectory(dir=library, prefix=".hardlink-check-") as destination:
+                source = Path(temporary) / "source"
+                target = Path(destination) / "target"
                 source.write_bytes(b"storage-check")
                 os.link(source, target)
-                hardlinks = source.stat().st_ino == target.stat().st_ino
-            finally:
-                target.unlink(missing_ok=True)
+                hardlinks = os.path.samefile(source, target)
+        except OSError:
+            hardlinks = False
     checks.append(result("hardlinks", hardlinks, "downloads → media"))
 
     raise SystemExit(0 if all(checks) else 1)
@@ -56,4 +57,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
