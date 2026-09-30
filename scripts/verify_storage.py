@@ -29,6 +29,9 @@ def main() -> None:
     marker = root / ".homelab-volume-id"
     actual = marker.read_text(encoding="utf-8").strip() if marker.is_file() else ""
     checks.append(result("volume marker", actual == volume_id, str(marker)))
+    if actual != volume_id:
+        # Never perform write probes on an unidentified or unexpected volume.
+        raise SystemExit(1)
 
     missing = [str(root / relative) for relative in DIRECTORIES if not (root / relative).is_dir()]
     checks.append(result("directory layout", not missing, ", ".join(missing) or "complete"))
