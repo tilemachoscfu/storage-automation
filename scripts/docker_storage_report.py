@@ -14,9 +14,10 @@ def main() -> None:
     for container in containers:
         host = container["HostConfig"]
         mounts = [
-            f"{mount['Source']}→{mount['Destination']}"
+            f"{mount.get('Source') or mount.get('Type', 'unknown')}→{mount['Destination']}"
             for mount in container.get("Mounts", [])
-            if mount["Destination"].startswith(("/storage", "/data"))
+            if mount["Destination"] in ("/storage", "/data")
+            or mount["Destination"].startswith(("/storage/", "/data/"))
         ]
         print(
             f"| {container['Name'].lstrip('/')} | {host['NetworkMode']} | "
