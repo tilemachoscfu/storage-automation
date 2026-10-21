@@ -21,13 +21,13 @@ DIRECTORIES = (
 
 def read_env(path: Path) -> dict[str, str]:
     values: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
         key, separator, value = line.partition("=")
         if not separator:
-            raise ValueError(f"invalid configuration line: {raw_line}")
+            raise ValueError(f"invalid configuration at line {line_number}: expected KEY=VALUE")
         values[key.strip()] = value.strip()
     return values
 
