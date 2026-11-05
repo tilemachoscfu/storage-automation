@@ -31,6 +31,26 @@ The marker is stored on the mounted filesystem itself. Containers receive the st
 
 This avoids the common failure mode where a missing disk leaves an empty mount directory on the system drive and containers silently begin writing into it.
 
+### When the guard refuses to start a service
+
+Do not rerun preparation with `--apply` or create a replacement marker. If the
+disk is absent, that can put a valid-looking marker on the system drive.
+
+1. Confirm the Docker daemon and Compose project are the intended ones before
+   interpreting a missing container as a missing disk.
+2. On the daemon host, use the actual **host bind source**, not the container
+   destination. Run `findmnt --target "$HOST_STORAGE_PATH"` with that path set
+   explicitly. Compare the backing filesystem with the expected volume: an
+   existing directory, or a successful lookup that returns the root filesystem,
+   is not proof that the dedicated disk is mounted.
+3. Only after confirming the filesystem identity, check that its existing
+   `.homelab-volume-id` matches the configured ID locally. If the device or
+   marker is missing or unexpected, leave the guard in place and investigate.
+   Do not publish mount details or marker values.
+
+The checks above are read-only. The separate `verify_storage.py` command
+performs temporary write and hardlink probes; reserve it for a known volume.
+
 ## Quick start
 
 ```sh
